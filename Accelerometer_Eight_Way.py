@@ -19,10 +19,16 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-# Accelerometer example.
-# Reads the accelerometer x, y, z values and prints them every tenth of a second.
-# Open the serial port after running to see the output printed.
-# Author: Tony DiCola
+#
+# Eight Way Tilt Indicator.
+# Uses the accelerometer to detect tilt in eight directions.
+#
+# Version:  0.2.2
+# Date:     01-Apr-2018
+# Purpose;  Added sensitivity (sens) and multiplier (mult) parameters to
+#             the tiltDirection() function so these can be changed on the
+#             fly. They default to SENSITIVITY and MULTIPLIER respectively.
+# Author:   Dale Weber <hybotics@hybotics.org>
 #
 # Version:  0.2.1
 # Date:     26-Mar-2018
@@ -48,8 +54,12 @@ import adafruit_lis3dh
 # Change this to alter the sensitivity of the tilt detection.
 # Greater makes the detection less sensitive, and less makes it more
 #   sensitive.
-# Positive values ONLY, since this is handled in detection
+# Positive values ONLY, since this is handled in detection. This must be
+#   greater than 0 (zero) and less than MULTIPLIER * (x, y, z).
 SENSITIVITY = 300
+
+# The multiplier for the x, y, and z accelerometer readings
+MULTIPLIER = 1000
 
 RED = 0x100000 # (0x10, 0, 0) also works
 YELLOW=(0x10, 0x10, 0)
@@ -69,35 +79,41 @@ lis3dh = adafruit_lis3dh.LIS3DH_I2C(i2c, address=0x19)
 # Set range of accelerometer (can be RANGE_2_G, RANGE_4_G, RANGE_8_G or RANGE_16_G).
 lis3dh.range = adafruit_lis3dh.RANGE_2_G
 
-def tiltDirection(x, y, z):
-  xm, ym, zm = int(x * 1000), int(y * 1000), int(z * 1000)
+def tiltDirection(x, y, z, sens = SENSITIVITY, mult = MULTIPLIER):
+  xm, ym, zm = int(x * mult), int(y * mult), int(z * mult)
   print('xm = {0}, ym = {1}, zm = {2}'.format(xm, ym, zm))
 
-  if (xm > -SENSITIVITY) and (xm < SENSITIVITY) and (ym < SENSITIVITY) and (ym > -SENSITIVITY):
+  if (mult < 0) or (mult < sens):
+    print("Invalid multiplier value: {0}".format(mult))
+    return -1
+  if (sens < 0) or (sens > mult):
+    print("Invalid sensitivity value: {0}".format(sens))
+    return -2
+  elif (xm > -sens) and (xm < sens) and (ym < sens) and (ym > -sens):
     # Level
     return 1
-  elif (ym > SENSITIVITY) and (xm > SENSITIVITY):
+  elif (ym > sens) and (xm > sens):
     # Bacward and right
     return 2
-  elif (ym > SENSITIVITY) and (xm < -SENSITIVITY):
+  elif (ym > sens) and (xm < -sens):
     # Backward and left
     return 3
-  elif (ym < -SENSITIVITY) and (xm > SENSITIVITY):
+  elif (ym < -sens) and (xm > sens):
     # Forward and right
     return 4
-  elif (ym < -SENSITIVITY) and (xm < -SENSITIVITY):
+  elif (ym < -sens) and (xm < -sens):
     # Forward and left
     return 5
-  elif (xm > SENSITIVITY):
+  elif (xm > sens):
     # Left
     return 6
-  elif (xm < -SENSITIVITY):
+  elif (xm < -sens):
     # Right
     return 7
-  elif (ym > SENSITIVITY):
+  elif (ym > sens):
     # Backward
     return 8
-  elif (ym < -SENSITIVITY):
+  elif (ym < -sens):
     # Forward
     return 9
   else:
@@ -164,10 +180,10 @@ while True:
   # Read accelerometer values (in m / s ^ 2).  Returns a 3-tuple of x, y,
   # z axis values.  Divide them by 9.806 to convert to Gs.
   x, y, z = lis3dh.acceleration
-  print("x = {0:.4f}, y = {1:.4f}, z = {2:.4f}".format(x, y, z))
+  print("x = {0:.10f}, y = {1:.10f}, z = {2:.10f}".format(x, y, z))
 
   xG, yG, zG = x / 9.806, y / 9.806, z / 9.806
-  print("xG = {0:.4f}G, yG = {1:.4f}G, zG = {2:.4f}G".format(xG, yG, zG))
+  print("xG = {0:.10f}G, yG = {1:.10f}G, zG = {2:.10f}G".format(xG, yG, zG))
 
   tilt = tiltDirection(x, y, z)
   showTiltDirection(tilt)
